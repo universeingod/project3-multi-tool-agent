@@ -14,11 +14,7 @@ from main import top_K   # type: ignore
 
 load_dotenv()
 
-llm = ChatOpenAI(
-    model = "deepseek-chat",
-    api_key = os.getenv("DEEPSEEK_API_KEY"),
-    base_url = "https://api.deepseek.com",
-)
+
 @tool
 def calculator(expression: str) -> float:
     """计算一个数学表达式，如 "3.5 * 2 + 1"。"""
@@ -73,13 +69,33 @@ def search_doc(query : str) ->str:
         result += f"[来源{i + 1} | 第{meta['page']}页]\n{doc}\n\n"
     return result
 
+@tool
+def translate(text : str) -> str:
+    """如果文本是中文就翻译成英文，如果文本是英文就翻译成中文，如果是其它语言，均翻译成中文
+        Args:
+            text : 待翻译的文本
+    """
+    llm = ChatOpenAI(
+        model = "deepseek-chat",
+        api_key = os.getenv("DEEPSEEK_API_KEY"),
+        base_url = "https://api.deepseek.com",
+        temperature=0,
+        )
+    prompt = f"只翻译，中文翻译英文，英文翻译中文，其它语言翻译成中文，不解释{text}"
+    res = llm.invoke(prompt)
+    return res.content
 
-tools = [calculator, query_db, search_doc]
+tools = [calculator, query_db, search_doc, translate]
 
 class AgentState(TypedDict):
     messages : Annotated[List, add_messages]
 
 def agent(state : AgentState):
+    llm = ChatOpenAI(
+    model = "deepseek-chat",
+    api_key = os.getenv("DEEPSEEK_API_KEY"),
+    base_url = "https://api.deepseek.com",
+    )
     print("流到了agent")
     return {"messages" : [llm.bind_tools(tools).invoke(state["messages"])]}
 
@@ -101,7 +117,7 @@ builder.add_edge("tools", "agent")
 
 app = builder.compile()
 
-result = app.invoke({"messages" : "算 (15+3)*2 再查 WH-1000XM5 库存"})
+result = app.invoke({"messages" : "算 (15+3)*2 再查 WH-1000XM5 库存 再翻译“疑是银河落九天”"})
 print("模型回答：", result["messages"][-1].content)
 
 print(app.get_graph().draw_mermaid())

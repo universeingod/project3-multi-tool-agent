@@ -24,3 +24,5 @@ graph TD;
 ![ReAct](images/ReAct流程.png)
 6.**快速开始**：
 pip install -r requirements.txt
+
+7.**附带（MCP Demo）**：`mcp_server.py` 用 FastMCP 暴露 4 个工具（add / get_now / echo / search_doc，search_doc 复用项目 2 的 RAG 检索），`mcp_client.py` 走 stdio 跨进程调用。运行 `python mcp_client.py`（客户端会自己拉起服务端）。注：search_doc 依赖同级的 project2-rag-qa 仓库。
