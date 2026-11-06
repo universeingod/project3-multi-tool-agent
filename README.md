@@ -5,17 +5,17 @@
 3.**技术栈**：LangGraph · LangChain · DeepSeek API · Function Calling · SQLite · python-dotenv
 
 4.**架构图**：
-```
-graph TD;
-        __start__([<p>__start__</p>]):::first
+```mermaid
+graph TD
+        __start__([start]):::first
         agent(agent)
-        tools(tools<hr/><small><em>__tools = calculator, query_db, search_doc</em></small>)
-        __end__([<p>__end__</p>]):::last
-        __start__ --> agent;
-        agent -.-> __end__;
-        agent -.-> tools;
-        tools --> agent;
-        classDef default fill:#f2f0ff,line-height:1.2
+        tools(tools: calculator / query_db / search_doc)
+        __end__([end]):::last
+        __start__ --> agent
+        agent -.-> __end__
+        agent -.-> tools
+        tools --> agent
+        classDef default fill:#f2f0ff
         classDef first fill-opacity:0
         classDef last fill:#bfb6fc
 ```
