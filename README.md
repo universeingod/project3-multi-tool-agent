@@ -1,21 +1,21 @@
-1.**概述**：一个基于 LangGraph 的多工具 Agent，用「状态图 + 条件边」实现 ReAct 循环，自动调度「计算 + SQL 查库 + 文档检索」三个工具回答跨工具问题，支持 Human-in-the-loop（人工审批），后端接 DeepSeek API。
+1.**概述**：一个基于 LangGraph 的多工具 Agent，用「状态图 + 条件边」实现 ReAct 循环，自动调度「计算 + SQL 查库 + 文档检索 + 翻译」四个工具回答跨工具问题，支持 Human-in-the-loop（人工审批：checkpointer + interrupt_before），后端接 DeepSeek API。
 
-2.**功能清单**：多工具调度 / ReAct 循环（状态图+条件边）/ 三工具（计算器、SQLite 查库存、复用项目2的 RAG 检索）/ Human-in-the-loop
+2.**功能清单**：多工具调度 / ReAct 循环（状态图+条件边）/ 四工具（计算器、SQLite 查库存、复用项目2的 RAG 检索、LLM 翻译）/ Human-in-the-loop
 
 3.**技术栈**：LangGraph · LangChain · DeepSeek API · Function Calling · SQLite · python-dotenv
 
 4.**架构图**：
-```
-graph TD;
-        __start__([<p>__start__</p>]):::first
+```mermaid
+graph TD
+        __start__([start]):::first
         agent(agent)
-        tools(tools<hr/><small><em>__tools = calculator, query_db, search_doc</em></small>)
-        __end__([<p>__end__</p>]):::last
-        __start__ --> agent;
-        agent -.-> __end__;
-        agent -.-> tools;
-        tools --> agent;
-        classDef default fill:#f2f0ff,line-height:1.2
+        tools(tools: calculator / query_db / search_doc / translate)
+        __end__([end]):::last
+        __start__ --> agent
+        agent -.-> __end__
+        agent -.-> tools
+        tools --> agent
+        classDef default fill:#f2f0ff
         classDef first fill-opacity:0
         classDef last fill:#bfb6fc
 ```

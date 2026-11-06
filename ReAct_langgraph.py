@@ -1,11 +1,15 @@
 from typing import Annotated, List, TypedDict
 from langgraph.graph import StateGraph, START, END
+from langgraph.checkpoint.memory import MemorySaver
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
+from langgraph.types import interrupt, Command
+from langchain_core.messages import AIMessage
 from dotenv import load_dotenv
 import os
+import re
 import sqlite3
 import sys
 from pathlib import Path
@@ -16,9 +20,14 @@ load_dotenv()
 
 
 @tool
-def calculator(expression: str) -> float:
+def calculator(expression: str) -> str:
     """计算一个数学表达式，如 "3.5 * 2 + 1"。"""
-    return eval(expression)
+    if not re.fullmatch(r"[0-9+\-*/().%\s]+", expression):
+        return "表达式含非法字符，拒绝计算"
+    try:
+        return str(eval(expression))
+    except Exception as e:
+        return f"计算出错 {e}"
 
 # 建一个内存数据库 + 商品表，塞入 mock 数据（每次运行都是干净的，不留文件）
 conn = sqlite3.connect(":memory:", check_same_thread=False)
@@ -107,17 +116,38 @@ def route_tools(state : AgentState):
     print("流到了END")
     return END
 
+
+def approve(state : AgentState):
+    """工具调用前的人工审批：interrupt 暂停，resume 传入 yes/no。"""
+    decision = interrupt("待执行工具调用，是否批准？(yes/no)")
+    if str(decision).strip().lower() != "yes":
+        return {"messages" : [AIMessage(content="[系统] 人工拒绝了本次工具调用")]}
+    return {}
+
 builder = StateGraph(AgentState)
 builder.add_node("agent", agent)
+builder.add_node("approve", approve)
 builder.add_node("tools", ToolNode(tools))
 
 builder.add_edge(START, "agent")
-builder.add_conditional_edges("agent", route_tools, {"tools" : "tools", END : END})
+builder.add_conditional_edges("agent", route_tools, {"tools" : "approve", END : END})
+builder.add_edge("approve", "tools")
 builder.add_edge("tools", "agent")
 
-app = builder.compile()
+checkpointer = MemorySaver()
+app = builder.compile(checkpointer=checkpointer)
 
-result = app.invoke({"messages" : "算 (15+3)*2 再查 WH-1000XM5 库存 再翻译“疑是银河落九天”"})
-print("模型回答：", result["messages"][-1].content)
+if __name__ == "__main__":
+    # Human-in-the-loop：approve 节点里 interrupt() 暂停，等人工审批；resume 用 Command(resume="yes")
+    config = {"configurable": {"thread_id": "1"}}
+    result = app.invoke({"messages": "算 (15+3)*2 再查 WH-1000XM5 库存 再翻译“疑是银河落九天”"}, config=config)
+    approve_count = 0
+    while "__interrupt__" in result:
+        approve_count += 1
+        print(f"【HITL】第 {approve_count} 次工具调用待人工审批（本 demo 自动放行 yes）")
+        result = app.invoke(Command(resume="yes"), config=config)
 
-print(app.get_graph().draw_mermaid())
+    print("模型回答：", result["messages"][-1].content)
+    print(f"（HITL 工具调用审批次数：{approve_count}）")
+
+    print(app.get_graph().draw_mermaid())
