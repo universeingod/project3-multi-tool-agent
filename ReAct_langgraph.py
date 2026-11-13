@@ -124,6 +124,15 @@ def approve(state : AgentState):
         return {"messages" : [AIMessage(content="[系统] 人工拒绝了本次工具调用")]}
     return {}
 
+
+def route_after_approve(state : AgentState):
+    """审批后路由：yes → 执行工具；no → 短路，不执行工具直接结束。"""
+    if state["messages"][-1].content == "[系统] 人工拒绝了本次工具调用":
+        print("审批被拒绝，工具未执行")
+        return END
+    return "tools"
+
+
 builder = StateGraph(AgentState)
 builder.add_node("agent", agent)
 builder.add_node("approve", approve)
@@ -131,7 +140,7 @@ builder.add_node("tools", ToolNode(tools))
 
 builder.add_edge(START, "agent")
 builder.add_conditional_edges("agent", route_tools, {"tools" : "approve", END : END})
-builder.add_edge("approve", "tools")
+builder.add_conditional_edges("approve", route_after_approve, {"tools" : "tools", END : END})
 builder.add_edge("tools", "agent")
 
 checkpointer = MemorySaver()
